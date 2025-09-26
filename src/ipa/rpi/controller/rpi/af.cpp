@@ -13,7 +13,9 @@
 
 #include <libcamera/base/log.h>
 
+#ifndef __QNX__
 #include <libcamera/control_ids.h>
+#endif
 
 using namespace RPiController;
 using namespace libcamera;

@@ -268,12 +268,20 @@ template<typename T,
 		 std::is_same_v<uint32_t, T> ||
 		 std::is_same_v<std::string, T> ||
 		 std::is_same_v<Size, T>> *>
+#ifdef __QNX__
+std::optional<std::vector<T, NothrowAllocator<T>>> YamlObject::getList() const
+#else
 std::optional<std::vector<T>> YamlObject::getList() const
+#endif
 {
 	if (type_ != Type::List)
 		return std::nullopt;
 
+#ifdef __QNX__
+	std::vector<T, NothrowAllocator<T>> values;
+#else
 	std::vector<T> values;
+#endif
 	values.reserve(list_.size());
 
 	for (const YamlObject &entry : asList()) {
@@ -286,6 +294,19 @@ std::optional<std::vector<T>> YamlObject::getList() const
 	return values;
 }
 
+#ifdef __QNX__
+template std::optional<std::vector<bool, NothrowAllocator<bool>>> YamlObject::getList<bool>() const;
+template std::optional<std::vector<float, NothrowAllocator<float>>> YamlObject::getList<float>() const;
+template std::optional<std::vector<double, NothrowAllocator<double>>> YamlObject::getList<double>() const;
+template std::optional<std::vector<int8_t, NothrowAllocator<int8_t>>> YamlObject::getList<int8_t>() const;
+template std::optional<std::vector<uint8_t, NothrowAllocator<uint8_t>>> YamlObject::getList<uint8_t>() const;
+template std::optional<std::vector<int16_t, NothrowAllocator<int16_t>>> YamlObject::getList<int16_t>() const;
+template std::optional<std::vector<uint16_t, NothrowAllocator<uint16_t>>> YamlObject::getList<uint16_t>() const;
+template std::optional<std::vector<int32_t, NothrowAllocator<int32_t>>> YamlObject::getList<int32_t>() const;
+template std::optional<std::vector<uint32_t, NothrowAllocator<uint32_t>>> YamlObject::getList<uint32_t>() const;
+template std::optional<std::vector<std::string, NothrowAllocator<std::string>>> YamlObject::getList<std::string>() const;
+template std::optional<std::vector<Size, NothrowAllocator<Size>>> YamlObject::getList<Size>() const;
+#else
 template std::optional<std::vector<bool>> YamlObject::getList<bool>() const;
 template std::optional<std::vector<float>> YamlObject::getList<float>() const;
 template std::optional<std::vector<double>> YamlObject::getList<double>() const;
@@ -297,6 +318,7 @@ template std::optional<std::vector<int32_t>> YamlObject::getList<int32_t>() cons
 template std::optional<std::vector<uint32_t>> YamlObject::getList<uint32_t>() const;
 template std::optional<std::vector<std::string>> YamlObject::getList<std::string>() const;
 template std::optional<std::vector<Size>> YamlObject::getList<Size>() const;
+#endif
 
 #endif /* __DOXYGEN__ */
 

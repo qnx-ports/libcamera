@@ -10,6 +10,10 @@
 #include <vector>
 #include <cassert>
 
+#ifdef __QNX__
+#include <no_throw_allocator.h>
+#endif
+
 /*
  * A simple histogram class, for use in particular to find "quantiles" and
  * averages between "quantiles".
@@ -49,7 +53,11 @@ public:
 	double interQuantileMean(double qLo, double qHi) const;
 
 private:
+#ifdef __QNX__
+	std::vector<uint64_t, NothrowAllocator<uint64_t>> cumulative_;
+#else
 	std::vector<uint64_t> cumulative_;
+#endif
 };
 
 } /* namespace RPiController */

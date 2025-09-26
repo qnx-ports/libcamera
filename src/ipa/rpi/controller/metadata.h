@@ -16,6 +16,10 @@
 
 #include <libcamera/base/thread_annotations.h>
 
+#ifdef __QNX__
+#include <no_throw_any.h>
+#endif
+
 namespace RPiController {
 
 class LIBCAMERA_TSA_CAPABILITY("mutex") Metadata
@@ -36,13 +40,31 @@ public:
 		other.data_.clear();
 	}
 
-	template<typename T>
-	void set(std::string const &tag, T &&value)
-	{
-		std::scoped_lock lock(mutex_);
-		data_[tag] = std::forward<T>(value);
-	}
+    template<typename T>
+    void set(const std::string &tag, T&& value) noexcept {
+        std::scoped_lock lock(mutex_);
+        data_[tag].set(std::forward<T>(value));
+    }
 
+#ifdef __QNX__
+	template<typename T>
+    int get(const std::string &tag, T &value) const noexcept
+    {
+        auto it = data_.find(tag);
+        if (it == data_.end()) {
+            return -1;
+        }
+
+        if (auto ptr = it->second.any_cast<T>())
+        {   // Safe, returns nullptr if mismatch
+            value = *ptr;
+            return 0;
+        }
+
+        // Type mismatch
+        return -2;
+    }
+#else
 	template<typename T>
 	int get(std::string const &tag, T &value) const
 	{
@@ -53,6 +75,7 @@ public:
 		value = std::any_cast<T>(it->second);
 		return 0;
 	}
+#endif
 
 	void clear()
 	{
@@ -107,7 +130,12 @@ public:
 		auto it = data_.find(tag);
 		if (it == data_.end())
 			return nullptr;
+#ifdef __QNX__
+		// Use NowthrowAny's custom any_cast function
+		return it->second.any_cast<T>();
+#else
 		return std::any_cast<T>(&it->second);
+#endif
 	}
 
 	template<typename T>
@@ -136,7 +164,16 @@ public:
 
 private:
 	mutable std::mutex mutex_;
+#ifdef __QNX__
+	using MapType = std::map<
+        std::string,
+        NothrowAny,
+        std::less<std::string>,
+        NothrowAllocator<std::pair<const std::string, NothrowAny>>>;
+    MapType data_;
+#else
 	std::map<std::string, std::any> data_;
+#endif
 };
 
 } /* namespace RPiController */

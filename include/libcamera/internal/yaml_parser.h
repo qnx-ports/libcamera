@@ -19,6 +19,10 @@
 
 #include <libcamera/geometry.h>
 
+#ifdef __QNX__
+#include <no_throw_allocator.h>
+#endif
+
 namespace libcamera {
 
 class File;
@@ -200,7 +204,11 @@ public:
 #else
 	template<typename T>
 #endif
+#ifdef __QNX__
+	std::optional<std::vector<T, NothrowAllocator<T>>> getList() const;
+#else
 	std::optional<std::vector<T>> getList() const;
+#endif
 
 	DictAdapter asDict() const { return DictAdapter{ list_ }; }
 	ListAdapter asList() const { return ListAdapter{ list_ }; }

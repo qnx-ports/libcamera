@@ -53,6 +53,10 @@
  * before calling Parse again.
  */
 
+#ifdef __QNX__
+#include <no_throw_allocator.h>
+#endif
+
 namespace RPiController {
 
 /* Abstract base class from which other metadata parsers are derived. */
@@ -60,7 +64,12 @@ namespace RPiController {
 class MdParser
 {
 public:
+#ifdef __QNX__
+	using RegisterMap =
+		std::map<uint32_t, uint32_t, std::less<uint32_t>, NothrowAllocator<std::pair<const uint32_t, uint32_t>>>;
+#else
 	using RegisterMap = std::map<uint32_t, uint32_t>;
+#endif
 
 	/*
 	 * Parser status codes:

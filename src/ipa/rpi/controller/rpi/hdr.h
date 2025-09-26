@@ -23,7 +23,11 @@ namespace RPiController {
 
 struct HdrConfig {
 	std::string name;
+#ifdef __QNX__
+	std::vector<unsigned int, NothrowAllocator<unsigned int>> cadence;
+#else
 	std::vector<unsigned int> cadence;
+#endif
 	std::map<unsigned int, std::string> channelMap;
 
 	/* Lens shading related parameters. */
@@ -39,12 +43,24 @@ struct HdrConfig {
 	libcamera::ipa::Pwl tonemap;
 	/* These relate to adaptive tonemap calculation. */
 	double speed;
+#ifdef __QNX__
+	std::vector<double, NothrowAllocator<double>> hiQuantileTargets;
+#else
 	std::vector<double> hiQuantileTargets; /* quantiles to check for unsaturated images */
+#endif
 	double hiQuantileMaxGain; /* the max gain we'll apply when unsaturated */
+#ifdef __QNX__
+	std::vector<double, NothrowAllocator<double>> quantileTargets;
+#else
 	std::vector<double> quantileTargets; /* target values for histogram quantiles */
+#endif
 	double powerMin; /* minimum tonemap power */
 	double powerMax; /* maximum tonemap power */
+#ifdef __QNX__
+	std::vector<double, NothrowAllocator<double>> contrastAdjustments;
+#else
 	std::vector<double> contrastAdjustments; /* any contrast adjustment factors */
+#endif
 
 	/* Stitch related parameters. */
 	bool stitchEnable;
@@ -65,7 +81,11 @@ public:
 	void prepare(Metadata *imageMetadata) override;
 	void process(StatisticsPtr &stats, Metadata *imageMetadata) override;
 	int setMode(std::string const &mode) override;
+#ifdef __QNX__
+	std::vector<unsigned int, NothrowAllocator<unsigned int>> getChannels() const override;
+#else
 	std::vector<unsigned int> getChannels() const override;
+#endif
 
 private:
 	void updateAgcStatus(Metadata *metadata);

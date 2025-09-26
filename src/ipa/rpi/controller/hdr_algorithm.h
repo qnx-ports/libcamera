@@ -19,7 +19,11 @@ public:
 		: Algorithm(controller) {}
 	/* An HDR algorithm must provide the following: */
 	virtual int setMode(std::string const &modeName) = 0;
+#ifdef __QNX__
+	virtual std::vector<unsigned int, NothrowAllocator<unsigned int>> getChannels() const = 0;
+#else
 	virtual std::vector<unsigned int> getChannels() const = 0;
+#endif
 };
 
 } /* namespace RPiController */

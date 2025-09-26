@@ -107,7 +107,11 @@ Pwl::Pwl()
  *
  * \a points must be in ascending order of x-value.
  */
+#ifdef __QNX__
+Pwl::Pwl(const std::vector<Point, NothrowAllocator<Point>> &points)
+#else
 Pwl::Pwl(const std::vector<Point> &points)
+#endif
 	: points_(points)
 {
 }
@@ -118,7 +122,11 @@ Pwl::Pwl(const std::vector<Point> &points)
  * The contents of the \a points vector is moved to the newly constructed Pwl
  * instance.
  */
+#ifdef __QNX__
+Pwl::Pwl(std::vector<Point, NothrowAllocator<Point>> &&points)
+#else
 Pwl::Pwl(std::vector<Point> &&points)
+#endif
 	: points_(std::move(points))
 {
 }

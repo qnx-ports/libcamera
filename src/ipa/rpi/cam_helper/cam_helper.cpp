@@ -5,13 +5,21 @@
  * helper information for different sensors
  */
 
+#ifndef __QNX__
 #include <linux/videodev2.h>
+#endif
 
 #include <limits>
 #include <map>
 #include <string.h>
 
+#ifndef __QNX__
 #include "libcamera/internal/v4l2_videodevice.h"
+#endif
+
+#ifdef __QNX__
+#include <libcamera/base/log.h>
+#endif
 
 #include "cam_helper.h"
 #include "md_parser.h"

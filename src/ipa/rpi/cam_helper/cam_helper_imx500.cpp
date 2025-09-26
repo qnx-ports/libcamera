@@ -18,7 +18,9 @@
 #include <libcamera/base/log.h>
 #include <libcamera/base/span.h>
 
+#ifndef __QNX__
 #include <libcamera/control_ids.h>
+#endif
 
 #include "imx500_tensor_parser/imx500_tensor_parser.h"
 

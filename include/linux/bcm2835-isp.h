@@ -13,6 +13,7 @@
 #ifndef __BCM2835_ISP_H_
 #define __BCM2835_ISP_H_
 
+#ifndef __QNX__
 #include <linux/v4l2-controls.h>
 
 #define V4L2_CID_USER_BCM2835_ISP_CC_MATRIX	\
@@ -33,6 +34,17 @@
 				(V4L2_CID_USER_BCM2835_ISP_BASE + 0x0008)
 #define V4L2_CID_USER_BCM2835_ISP_CDN \
 				(V4L2_CID_USER_BCM2835_ISP_BASE + 0x0009)
+#endif
+
+#ifdef __QNX__
+#include <stdint.h>
+typedef int32_t __s32;
+typedef uint8_t __u8;
+typedef uint16_t __u16;
+typedef uint32_t __u32;
+typedef uint64_t __u64;
+#endif
+
 /*
  * All structs below are directly mapped onto the equivalent structs in
  * drivers/staging/vc04_services/vchiq-mmal/mmal-parameters.h

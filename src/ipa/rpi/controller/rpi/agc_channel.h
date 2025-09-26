@@ -14,6 +14,10 @@
 
 #include <libipa/pwl.h>
 
+#ifdef __QNX__
+#include <no_throw_allocator.h>
+#endif
+
 #include "../agc_status.h"
 #include "../awb_status.h"
 #include "../controller.h"
@@ -25,13 +29,22 @@ namespace RPiController {
 using AgcChannelTotalExposures = std::vector<libcamera::utils::Duration>;
 
 struct AgcMeteringMode {
+#ifdef __QNX__
+	std::vector<double, NothrowAllocator<double>> weights;
+#else
 	std::vector<double> weights;
+#endif
 	int read(const libcamera::YamlObject &params);
 };
 
 struct AgcExposureMode {
+#ifdef __QNX__
+	std::vector<libcamera::utils::Duration, NothrowAllocator<libcamera::utils::Duration>> exposureTime;
+	std::vector<double, NothrowAllocator<double>> gain;
+#else
 	std::vector<libcamera::utils::Duration> exposureTime;
 	std::vector<double> gain;
+#endif
 	int read(const libcamera::YamlObject &params);
 };
 
@@ -87,7 +100,11 @@ public:
 	int read(const libcamera::YamlObject &params,
 		 const Controller::HardwareConfig &hardwareConfig);
 	unsigned int getConvergenceFrames() const;
+#ifdef __QNX__
+	std::vector<double, NothrowAllocator<double>> const &getWeights() const;
+#else
 	std::vector<double> const &getWeights() const;
+#endif
 	void setEv(double ev);
 	void setFlickerPeriod(libcamera::utils::Duration flickerPeriod);
 	void setMaxExposureTime(libcamera::utils::Duration maxExposureTime);

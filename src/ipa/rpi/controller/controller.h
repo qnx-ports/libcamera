@@ -101,7 +101,11 @@ protected:
 	int createAlgorithm(const std::string &name, const libcamera::YamlObject &params);
 
 	Metadata globalMetadata_;
+#ifdef __QNX__
+	std::vector<AlgorithmPtr, NothrowAllocator<AlgorithmPtr>> algorithms_;
+#else
 	std::vector<AlgorithmPtr> algorithms_;
+#endif
 	bool switchModeCalled_;
 
 private:

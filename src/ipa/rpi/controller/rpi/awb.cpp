@@ -785,7 +785,10 @@ void Awb::doAwb()
 	 * we're done with these; we may as well relinquish our hold on the
 	 * pointer.
 	 */
+#ifndef __QNX__
+	// Avoid using std::shared_ptr to have std::nothrow for new
 	statistics_.reset();
+#endif
 }
 
 /* Register algorithm with the system. */

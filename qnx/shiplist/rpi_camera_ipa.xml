@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shiplist>
+    <id>com.qnx.${baselineId}.osr.rpi_camera_ipa</id>
+    <name>rpi-camera-ipa</name>
+    <version>0.5.1</version>
+    <category>OSR</category>
+    <description>rpi-camera-ipa - RPi camera image processing algorithm library</description>
+    <property key="f.support" value="Custom"/>
+    <property key="f.swtype" value="III"/>
+    <property key="f.engage" value="B"/>
+    <property key="useInfo" value="false"/>
+    <file name="${targetfolder}/[ARCH:aarch64le]/usr/lib/librpi_camera_ipa.so"/>
+    <file name="${targetfolder}/[ARCH:aarch64le]/usr/lib/librpi_camera_ipa.so.1"/>
+    <file name="${targetfolder}/[ARCH:aarch64le]/usr/lib/librpi_camera_ipa.so.0.5.1"/>
+    <provides>library: librpi_camera_ipa.so</provides>
+    <provides>library: librpi_camera_ipa.so.1</provides>
+    <provides>library: librpi_camera_ipa.so.0.5.1</provides>
+</shiplist>

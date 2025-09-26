@@ -29,7 +29,11 @@ public:
 	char const *name() const override;
 	int read(const libcamera::YamlObject &params) override;
 	unsigned int getConvergenceFrames() const override;
+#ifdef __QNX__
+	std::vector<double, NothrowAllocator<double>> const &getWeights() const override;
+#else
 	std::vector<double> const &getWeights() const override;
+#endif
 	void setEv(unsigned int channel, double ev) override;
 	void setFlickerPeriod(libcamera::utils::Duration flickerPeriod) override;
 	void setMaxExposureTime(libcamera::utils::Duration maxExposureTime) override;
@@ -49,12 +53,21 @@ public:
 	void switchMode(CameraMode const &cameraMode, Metadata *metadata) override;
 	void prepare(Metadata *imageMetadata) override;
 	void process(StatisticsPtr &stats, Metadata *imageMetadata) override;
+#ifdef __QNX__
+	void setActiveChannels(const std::vector<unsigned int, NothrowAllocator<unsigned int>> &activeChannels) override;
+#else
 	void setActiveChannels(const std::vector<unsigned int> &activeChannels) override;
+#endif
 
 private:
 	int checkChannel(unsigned int channel) const;
+#ifdef __QNX__
+	std::vector<AgcChannelData, NothrowAllocator<AgcChannelData>> channelData_;
+	std::vector<unsigned int, NothrowAllocator<unsigned int>> activeChannels_;
+#else
 	std::vector<AgcChannelData> channelData_;
 	std::vector<unsigned int> activeChannels_;
+#endif
 	unsigned int index_; /* index into the activeChannels_ */
 	AgcChannelTotalExposures channelTotalExposures_;
 };

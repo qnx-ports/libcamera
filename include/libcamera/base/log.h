@@ -48,6 +48,11 @@ private:
 	static_assert(decltype(severity_)::is_always_lock_free);
 };
 
+#ifdef __QNX__
+// Define these macros to be nothing
+#define LOG_DECLARE_CATEGORY(name)
+#define LOG_DEFINE_CATEGORY(name)
+#else
 #define LOG_DECLARE_CATEGORY(name)					\
 extern const LogCategory &_LOG_CATEGORY(name)();
 
@@ -59,6 +64,7 @@ const LogCategory &_LOG_CATEGORY(name)()				\
 	static LogCategory *category = LogCategory::create(#name);	\
 	return *category;						\
 }
+#endif
 
 class LogMessage
 {
@@ -105,6 +111,77 @@ LogMessage _log(const LogCategory *category, LogSeverity severity,
 		const char *fileName = __builtin_FILE(),
 		unsigned int line = __builtin_LINE());
 
+#ifdef __QNX__
+#include <log_handler.h>
+#include <ostream>
+#include <cstdio>
+#include <cstring>
+
+// Use FixedBuffer instead of ostringstream to avoid
+// string dynamic allocation
+struct FixedBuffer : std::streambuf {
+    FixedBuffer(char* buf, size_t len)
+    {
+        setp(buf, buf + len - 1);
+    }
+
+    // Handle overflow
+    int_type overflow(int_type ch) override
+    {
+        if (ch != traits_type::eof() && pptr() < epptr())
+        {
+            *pptr() = ch;
+            pbump(1);
+            return ch;
+        }
+        return traits_type::eof();
+    }
+
+    const char* c_str()
+    {
+        *pptr() = '\0';
+        return pbase();
+    }
+};
+
+// Wrapper for QNX slog2 LOG_* macros
+struct LogStreamAdapter {
+    using LogFunc = void (*)(const char*);
+    LogFunc log_func;
+
+    static constexpr size_t BUFFER_SIZE = 512;
+    char buffer[BUFFER_SIZE];
+    FixedBuffer fb;
+    std::ostream stream;
+
+    LogStreamAdapter(LogFunc f) noexcept
+        : log_func(f), fb(buffer, BUFFER_SIZE), stream(&fb) {}
+
+    template<typename T>
+    LogStreamAdapter& operator<<(const T& value) noexcept
+    {
+        stream << value;
+        return *this;
+    }
+
+    ~LogStreamAdapter() noexcept
+    {
+        log_func(fb.c_str());
+    }
+};
+
+#define LOG_HELPER_Warning(...) LOG_WARNING(__VA_ARGS__)
+#define LOG_HELPER_Debug(...)   LOG_DEBUG1(__VA_ARGS__)
+#define LOG_HELPER_Fatal(...)   LOG_ERROR(__VA_ARGS__)
+#define LOG_HELPER_Error(...)   LOG_ERROR(__VA_ARGS__)
+#define LOG_HELPER_Info(...)    LOG_INFO(__VA_ARGS__)
+
+#define LOG_DISPATCH(level, ...) LOG_HELPER_##level(__VA_ARGS__)
+// Define LOG macro to use the LogStreamAdapter class
+// LogStreamAdpater then uses LOG_DISPATCH which translates to slog2 macros
+#define LOG(category, level) \
+    LogStreamAdapter(+[](const char* s){ LOG_DISPATCH(level, "%s", s); })
+#else
 #ifndef __DOXYGEN__
 #define _LOG_CATEGORY(name) logCategory##name
 
@@ -122,6 +199,7 @@ LogMessage _log(const LogCategory *category, LogSeverity severity,
 #else /* __DOXYGEN___ */
 #define LOG(category, severity)
 #endif /* __DOXYGEN__ */
+#endif
 
 #ifndef NDEBUG
 #define ASSERT(condition) static_cast<void>(({                          \

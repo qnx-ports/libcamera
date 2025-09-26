@@ -146,7 +146,11 @@ int Hdr::setMode(std::string const &mode)
 	return 0;
 }
 
+#ifdef __QNX__
+std::vector<unsigned int, NothrowAllocator<unsigned int>> Hdr::getChannels() const
+#else
 std::vector<unsigned int> Hdr::getChannels() const
+#endif
 {
 	return config_.at(status_.mode).cadence;
 }

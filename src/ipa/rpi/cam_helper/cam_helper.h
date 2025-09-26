@@ -18,7 +18,9 @@
 #include "controller/metadata.h"
 #include "md_parser.h"
 
+#ifndef __QNX__
 #include "libcamera/internal/v4l2_videodevice.h"
+#endif
 
 namespace RPiController {
 

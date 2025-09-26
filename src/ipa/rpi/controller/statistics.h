@@ -10,6 +10,10 @@
 #include <stdint.h>
 #include <vector>
 
+#ifdef __QNX__
+#include <no_throw_allocator.h>
+#endif
+
 #include "histogram.h"
 #include "region_stats.h"
 
@@ -63,7 +67,11 @@ struct Statistics {
 	Histogram yHist;
 
 	/* Row sums for flicker avoidance. */
+#ifdef __QNX__
+	std::vector<RgbySums, NothrowAllocator<RgbySums>> rowSums;
+#else
 	std::vector<RgbySums> rowSums;
+#endif
 
 	/* Region based colour sums. */
 	RgbyRegions agcRegions;
@@ -72,7 +80,12 @@ struct Statistics {
 	/* Region based focus FoM. */
 	FocusRegions focusRegions;
 };
-
+#ifdef __QNX__
+// Avoid using std::shared_ptr to have std::nothrow for new so that
+// slog2 is not flooded with warnings
+using StatisticsPtr = Statistics*;
+#else
 using StatisticsPtr = std::shared_ptr<Statistics>;
+#endif
 
 } /* namespace RPiController */

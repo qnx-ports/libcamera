@@ -43,8 +43,13 @@ public:
 	};
 
 	Pwl();
+#ifdef __QNX__
+	Pwl(const std::vector<Point, NothrowAllocator<Point>> &points);
+	Pwl(std::vector<Point, NothrowAllocator<Point>> &&points);
+#else
 	Pwl(const std::vector<Point> &points);
 	Pwl(std::vector<Point> &&points);
+#endif
 
 	void append(double x, double y, double eps = 1e-6);
 
@@ -78,7 +83,11 @@ private:
 	void prepend(double x, double y, double eps = 1e-6);
 	int findSpan(double x, int span) const;
 
+#ifdef __QNX__
+	std::vector<Point, NothrowAllocator<Point>> points_;
+#else
 	std::vector<Point> points_;
+#endif
 };
 
 } /* namespace ipa */

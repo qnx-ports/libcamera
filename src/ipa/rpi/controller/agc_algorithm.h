@@ -20,7 +20,11 @@ public:
 	AgcAlgorithm(Controller *controller) : Algorithm(controller) {}
 	/* An AGC algorithm must provide the following: */
 	virtual unsigned int getConvergenceFrames() const = 0;
+#ifdef __QNX__
+	virtual std::vector<double, NothrowAllocator<double>> const &getWeights() const = 0;
+#else
 	virtual std::vector<double> const &getWeights() const = 0;
+#endif
 	virtual void setEv(unsigned int channel, double ev) = 0;
 	virtual void setFlickerPeriod(libcamera::utils::Duration flickerPeriod) = 0;
 	virtual void setFixedExposureTime(unsigned int channel,
@@ -36,7 +40,11 @@ public:
 	virtual void enableAutoGain() = 0;
 	virtual void disableAutoGain() = 0;
 	virtual bool autoGainEnabled() const = 0;
+#ifdef __QNX__
+	virtual void setActiveChannels(const std::vector<unsigned int, NothrowAllocator<unsigned int>> &activeChannels) = 0;
+#else
 	virtual void setActiveChannels(const std::vector<unsigned int> &activeChannels) = 0;
+#endif
 };
 
 } /* namespace RPiController */

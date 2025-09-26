@@ -138,7 +138,11 @@ unsigned int Agc::getConvergenceFrames() const
 	return channelData_[0].channel.getConvergenceFrames() * activeChannels_.size();
 }
 
+#ifdef __QNX__
+std::vector<double, NothrowAllocator<double>> const &Agc::getWeights() const
+#else
 std::vector<double> const &Agc::getWeights() const
+#endif
 {
 	/*
 	 * In future the metering weights may be determined differently, making it
@@ -229,7 +233,11 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &v)
 	return os;
 }
 
+#ifdef __QNX__
+void Agc::setActiveChannels(const std::vector<unsigned int, NothrowAllocator<unsigned int>> &activeChannels)
+#else
 void Agc::setActiveChannels(const std::vector<unsigned int> &activeChannels)
+#endif
 {
 	if (activeChannels.empty()) {
 		LOG(RPiAgc, Warning) << "No active AGC channels supplied";
@@ -240,7 +248,9 @@ void Agc::setActiveChannels(const std::vector<unsigned int> &activeChannels)
 		if (checkChannel(index))
 			return;
 
+#ifndef __QNX__
 	LOG(RPiAgc, Debug) << "setActiveChannels " << activeChannels;
+#endif
 	activeChannels_ = activeChannels;
 	index_ = 0;
 }

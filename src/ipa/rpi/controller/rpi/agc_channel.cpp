@@ -258,7 +258,12 @@ int AgcConfig::read(const libcamera::YamlObject &params)
 
 	stableRegion = params["stable_region"].get<double>(0.02);
 
+#ifdef __QNX__
+	// Disable desaturation due to flickering
+	desaturate = params["desaturate"].get<int>(0);
+#else
 	desaturate = params["desaturate"].get<int>(1);
+#endif
 
 	return 0;
 }
@@ -362,7 +367,11 @@ unsigned int AgcChannel::getConvergenceFrames() const
 		return config_.convergenceFrames;
 }
 
+#ifdef __QNX__
+std::vector<double, NothrowAllocator<double>> const &AgcChannel::getWeights() const
+#else
 std::vector<double> const &AgcChannel::getWeights() const
+#endif
 {
 	/*
 	 * In case someone calls setMeteringMode and then this before the
@@ -669,8 +678,13 @@ void AgcChannel::fetchAwbStatus(Metadata *imageMetadata)
 		LOG(RPiAgc, Debug) << "No AWB status found";
 }
 
+#ifdef __QNX__
+static double computeInitialY(StatisticsPtr &stats, AwbStatus const &awb,
+			      std::vector<double, NothrowAllocator<double>> &weights, double gain)
+#else
 static double computeInitialY(StatisticsPtr &stats, AwbStatus const &awb,
 			      std::vector<double> &weights, double gain)
+#endif
 {
 	constexpr uint64_t maxVal = 1 << Statistics::NormalisationFactorPow2;
 

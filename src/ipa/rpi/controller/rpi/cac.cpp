@@ -42,8 +42,13 @@ static bool arrayToSet(const libcamera::YamlObject &params, std::vector<double> 
 	return num == max_num;
 }
 
+#ifdef __QNX__
+static void setStrength(std::vector<double, NothrowAllocator<double>> &inputArray, std::vector<double, NothrowAllocator<double>> &outputArray,
+			double strengthFactor)
+#else
 static void setStrength(std::vector<double> &inputArray, std::vector<double> &outputArray,
 			double strengthFactor)
+#endif
 {
 	int num = 0;
 	for (const auto &p : inputArray) {

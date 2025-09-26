@@ -12,6 +12,10 @@
 
 #include <libcamera/geometry.h>
 
+#ifdef __QNX__
+#include <no_throw_allocator.h>
+#endif
+
 namespace RPiController {
 
 template<typename T>
@@ -116,7 +120,11 @@ private:
 
 	libcamera::Size size_;
 	unsigned int numFloating_;
+#ifdef __QNX__
+	std::vector<Region, NothrowAllocator<Region>> regions_;
+#else
 	std::vector<Region> regions_;
+#endif
 	Region default_;
 };
 
