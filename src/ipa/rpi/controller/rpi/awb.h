@@ -12,6 +12,10 @@
 
 #include <libcamera/geometry.h>
 
+#ifdef __QNX__
+#include <no_throw_allocator.h>
+#endif
+
 #include "../awb_algorithm.h"
 #include "../awb_status.h"
 #include "../statistics.h"
@@ -48,9 +52,15 @@ struct AwbConfig {
 	libcamera::ipa::Pwl ctRInverse; /* inverse of ctR */
 	libcamera::ipa::Pwl ctBInverse; /* inverse of ctB */
 	/* table of illuminant priors at different lux levels */
+#ifdef __QNX__
+	std::vector<AwbPrior, NothrowAllocator<AwbPrior>> priors;
+	/* AWB "modes" (determines the search range) */
+	std::map<std::string, AwbMode, std::less<std::string>, NothrowAllocator<std::pair<const std::string, AwbMode>>> modes;
+#else
 	std::vector<AwbPrior> priors;
 	/* AWB "modes" (determines the search range) */
 	std::map<std::string, AwbMode> modes;
+#endif
 	AwbMode *defaultMode; /* mode used if no mode selected */
 	/*
 	 * minimum proportion of pixels counted within AWB region for it to be
@@ -171,8 +181,13 @@ private:
 	libcamera::ipa::Pwl interpolatePrior();
 	double coarseSearch(libcamera::ipa::Pwl const &prior);
 	void fineSearch(double &t, double &r, double &b, libcamera::ipa::Pwl const &prior);
+#ifdef __QNX__
+	std::vector<RGB, NothrowAllocator<RGB>> zones_;
+	std::vector<libcamera::ipa::Pwl::Point, NothrowAllocator<libcamera::ipa::Pwl::Point>> points_;
+#else
 	std::vector<RGB> zones_;
 	std::vector<libcamera::ipa::Pwl::Point> points_;
+#endif
 	/* manual r setting */
 	double manualR_;
 	/* manual b setting */

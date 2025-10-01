@@ -29,6 +29,8 @@
 #include "cam_helper/cam_helper.h"
 #include "controller/agc_algorithm.h"
 #include "controller/agc_status.h"
+#include "controller/awb_algorithm.h"
+#include "controller/awb_status.h"
 #include "controller/controller.h"
 
 using namespace std::chrono_literals;
@@ -58,6 +60,14 @@ constexpr uint64_t IMX708_MAX_FRAME_LENGTH =                    8388480u;
 constexpr int IMX708_MIN_LINE_LENGTH =                          7824;
 constexpr int IMX708_MAX_LINE_LENGTH =                          7824;
 constexpr libcamera::utils::Duration IMX708_MAX_EXPOSURE_TIME = 32680.16us;
+
+// Multiply by this amount for RPi4 red blue green gains
+constexpr int32_t RPI4_WHITE_BALANCE_CONVERSION =               1000;
+
+// Number of output int32_t field bits for floating point to int32_t conversion
+constexpr size_t RPI5_WHITE_BALANCE_FIELD_BITS =                14;
+// Number of output int32_t fractional bits for floating point to int32_t conversion
+constexpr size_t RPI5_WHITE_BALANCE_FRACTIONAL_BITS =           10;
 
 // Data structure to keep track of the library state
 struct RpiIpaHandle_t {
@@ -214,6 +224,40 @@ static int fillDeviceStatus(RpiIpaHandle_t* handle, RPiController::Metadata& rpi
     rpiMetadata.set("device.status", deviceStatus);
 
     return EOK;
+}
+
+/**
+ * @brief Helper function for converting a floating point to
+ * a fixed point integer
+ *
+ * This function is taken from src/ipa/rpi/pisp/pisp.cpp
+ *
+ * @param[in] value Floating point to convert
+ * @param[in] fieldBits Total number of bits for storing the int32_t integer
+ * @param[in] fracBits Number of fractional bits
+ * @param[in] isSigned @c value's sign
+ * @param[in] desc Optional description string
+ *
+ * @return Return the converted int32_t value
+ */
+static int32_t clampField(double value,
+                          std::size_t fieldBits,
+                          std::size_t fracBits = 0,
+                          bool isSigned = false,
+                          const char *desc = nullptr)
+{
+    ASSERT(fracBits <= fieldBits && fieldBits <= 32);
+
+    int min = -(isSigned << (fieldBits - 1));
+    int max = (1 << (fieldBits - isSigned)) - 1;
+    int32_t val =
+    std::clamp<int32_t>(std::round(value * (1 << fracBits)), min, max);
+
+    if (desc && val / (1 << fracBits) != value) {
+        LOG_WARNING("rounded/clamped to %f", val / (1 << fracBits));
+    }
+
+    return val;
 }
 
 /**
@@ -425,7 +469,10 @@ int rpiIpaProcessData(RpiIpaHandle_t* handle,
                       void* ispMetadata,
                       size_t ispMetadataSize,
                       int32_t* exposureTime,
-                      int32_t* iso)
+                      int32_t* iso,
+                      int32_t* gainR,
+                      int32_t* gainG,
+                      int32_t* gainB)
 {
     RPiController::StatisticsPtr statistics;
 
@@ -434,7 +481,10 @@ int rpiIpaProcessData(RpiIpaHandle_t* handle,
         (sensorMetadata == NULL) ||
         (ispMetadata == NULL) ||
         (exposureTime == NULL) ||
-        (iso == NULL)) {
+        (iso == NULL) ||
+        (gainR == NULL) ||
+        (gainG == NULL) ||
+        (gainB == NULL)) {
         LOG_ERROR("NULL parameter");
         return EINVAL;
     }
@@ -471,6 +521,34 @@ int rpiIpaProcessData(RpiIpaHandle_t* handle,
     // Get the auto exposure algorithm output
     struct AgcStatus agcStatus;
     if (handle->rpiMetadata.get("agc.status", agcStatus) != 0) {
+        delete statistics;
+        return EINVAL;
+    }
+
+    // Get the auto whitebalance algorithm output
+    struct AwbStatus awbStatus;
+    if (handle->rpiMetadata.get("awb.status", awbStatus) != 0) {
+        delete statistics;
+        return EINVAL;
+    }
+
+    // Convert auto whitebalance output for each platform
+    if (handle->rpiPlatform == RPI4) {
+        *gainR = awbStatus.gainR * RPI4_WHITE_BALANCE_CONVERSION;
+        *gainG = awbStatus.gainG * RPI4_WHITE_BALANCE_CONVERSION;
+        *gainB = awbStatus.gainB * RPI4_WHITE_BALANCE_CONVERSION;
+    } else if (handle->rpiPlatform == RPI5) {
+        *gainR = clampField(awbStatus.gainR,
+                            RPI5_WHITE_BALANCE_FIELD_BITS,
+                            RPI5_WHITE_BALANCE_FRACTIONAL_BITS);
+        *gainG = clampField(awbStatus.gainG,
+                            RPI5_WHITE_BALANCE_FIELD_BITS,
+                            RPI5_WHITE_BALANCE_FRACTIONAL_BITS);
+        *gainB = clampField(awbStatus.gainB,
+                            RPI5_WHITE_BALANCE_FIELD_BITS,
+                            RPI5_WHITE_BALANCE_FRACTIONAL_BITS);
+    } else {
+        LOG_ERROR("Invalid RPi platform %d", handle->rpiPlatform);
         delete statistics;
         return EINVAL;
     }

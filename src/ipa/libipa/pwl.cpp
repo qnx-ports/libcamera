@@ -360,6 +360,7 @@ void Pwl::map(std::function<void(double x, double y)> f) const
  * the combined list of x-values from \a pwl0 and \a pwl1, y0 is the y-value
  * for the given x in \a pwl0, and y1 is the y-value for the same x in \a pwl1.
  */
+#ifndef __QNX__
 void Pwl::map2(Pwl const &pwl0, Pwl const &pwl1,
 	       std::function<void(double x, double y0, double y1)> f)
 {
@@ -380,6 +381,7 @@ void Pwl::map2(Pwl const &pwl0, Pwl const &pwl1,
 		f(x, pwl0.eval(x, &span0, false), pwl1.eval(x, &span1, false));
 	}
 }
+#endif
 
 /**
  * \brief Combine two Pwls
@@ -393,6 +395,7 @@ void Pwl::map2(Pwl const &pwl0, Pwl const &pwl1,
  *
  * \return The combined pwl
  */
+#ifndef __QNX__
 Pwl Pwl::combine(Pwl const &pwl0, Pwl const &pwl1,
 		 std::function<double(double x, double y0, double y1)> f,
 		 const double eps)
@@ -403,6 +406,7 @@ Pwl Pwl::combine(Pwl const &pwl0, Pwl const &pwl1,
 	});
 	return result;
 }
+#endif
 
 /**
  * \brief Multiply the piecewise linear function

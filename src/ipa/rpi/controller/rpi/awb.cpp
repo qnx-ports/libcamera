@@ -433,7 +433,11 @@ void Awb::asyncFunc()
 	}
 }
 
+#ifdef __QNX__
+static void generateStats(std::vector<Awb::RGB, NothrowAllocator<Awb::RGB>> &zones,
+#else
 static void generateStats(std::vector<Awb::RGB> &zones,
+#endif
 			  StatisticsPtr &stats, double minPixels,
 			  double minG, Metadata &globalMetadata,
 			  double biasProportion, double biasCtR, double biasCtB)
@@ -737,8 +741,13 @@ void Awb::awbGrey()
 	 * consider some variations, such as normalising all the zones first, or
 	 * doing an L2 average etc.
 	 */
+#ifdef __QNX__
+	std::vector<RGB, NothrowAllocator<RGB>> &derivsR(zones_);
+	std::vector<RGB, NothrowAllocator<RGB>> derivsB(derivsR);
+#else
 	std::vector<RGB> &derivsR(zones_);
 	std::vector<RGB> derivsB(derivsR);
+#endif
 	std::sort(derivsR.begin(), derivsR.end(),
 		  [](RGB const &a, RGB const &b) {
 			  return a.G * b.R < b.G * a.R;

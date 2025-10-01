@@ -63,6 +63,9 @@ void rpiIpaStop(RpiIpaHandle_t* handle);
  * @param[in] ispMetadataSize Size of @c ispMetadata in bytes
  * @param[out] exposureTime Output exposure time to set on the sensor
  * @param[out] iso Output iso to set on the sensor
+ * @param[out] gainR Output red gain
+ * @param[out] gainG Output green gain
+ * @param[out] gainB output blue gain
  *
  * @return Return EOK on success, otherwise an error
  */
@@ -72,7 +75,10 @@ int rpiIpaProcessData(RpiIpaHandle_t* handle,
                       void* ispMetadata,
                       size_t ispMetadataSize,
                       int32_t* exposureTime,
-                      int32_t* iso);
+                      int32_t* iso,
+                      int32_t* gainR,
+                      int32_t* gainG,
+                      int32_t* gainB);
 
 #ifdef __cplusplus
 }

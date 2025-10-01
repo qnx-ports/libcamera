@@ -36,6 +36,7 @@ set(SOURCE_CPP_FILES
 
     ${PROJECT_ROOT}/src/ipa/rpi/controller/rpi/agc_channel.cpp
     ${PROJECT_ROOT}/src/ipa/rpi/controller/rpi/agc.cpp
+    ${PROJECT_ROOT}/src/ipa/rpi/controller/rpi/awb.cpp
     ${PROJECT_ROOT}/src/ipa/rpi/controller/rpi/lux.cpp
 
     ${PROJECT_ROOT}/src/ipa/rpi/qnx/log_handler.cpp
