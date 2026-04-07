@@ -76,6 +76,7 @@ struct RpiIpaHandle_t {
     RPiController::Metadata rpiMetadata                 {};
     rpiPlatform_t rpiPlatform                           {};
     CameraMode cameraMode                               {};
+    RPiController::StatisticsPtr statistics             {};
 };
 
 extern "C" {
@@ -279,53 +280,59 @@ static RPiController::StatisticsPtr rpi4ProcessStats(RpiIpaHandle_t* handle, con
     }
 
     const bcm2835_isp_stats *stats = reinterpret_cast<bcm2835_isp_stats *>(mem.data());
-    RPiController::StatisticsPtr statistics = new (std::nothrow) RPiController::Statistics( RPiController::Statistics::AgcStatsPos::PreWb,
-                                 RPiController::Statistics::ColourStatsPos::PostLsc);
+
+    // Reset statistics
+    handle->statistics->rHist.clear();
+    handle->statistics->gHist.clear();
+    handle->statistics->bHist.clear();
+    handle->statistics->yHist.clear();
+    handle->statistics->rowSums.clear();
+
     const RPiController::Controller::HardwareConfig &hw = handle->controller.getHardwareConfig();
     unsigned int i;
 
     /* RGB histograms are not used, so do not populate them. */
-    statistics->yHist = RPiController::Histogram(stats->hist[0].g_hist,
+    handle->statistics->yHist = RPiController::Histogram(stats->hist[0].g_hist,
                              hw.numHistogramBins);
 
     /* All region sums are based on a 16-bit normalised pipeline bit-depth. */
     unsigned int scale =  RPiController::Statistics::NormalisationFactorPow2 - hw.pipelineWidth;
 
-    statistics->awbRegions.init(hw.awbRegions);
-    for (i = 0; i < statistics->awbRegions.numRegions(); i++)
-        statistics->awbRegions.set(i, { { stats->awb_stats[i].r_sum << scale,
-                          stats->awb_stats[i].g_sum << scale,
-                          stats->awb_stats[i].b_sum << scale },
-                        stats->awb_stats[i].counted,
-                        stats->awb_stats[i].notcounted });
+    handle->statistics->awbRegions.init(hw.awbRegions);
+    for (i = 0; i < handle->statistics->awbRegions.numRegions(); i++)
+        handle->statistics->awbRegions.set(i, { { stats->awb_stats[i].r_sum << scale,
+                                                  stats->awb_stats[i].g_sum << scale,
+                                                  stats->awb_stats[i].b_sum << scale },
+                                                stats->awb_stats[i].counted,
+                                                stats->awb_stats[i].notcounted });
 
     RPiController::AgcAlgorithm *agc = dynamic_cast<RPiController::AgcAlgorithm *>(
         handle->controller.getAlgorithm("agc"));
     if (!agc) {
         LOG_ERROR("No AGC algorithm - not copying statistics");
-        statistics->agcRegions.init(0);
+        handle->statistics->agcRegions.init(0);
     } else {
-        statistics->agcRegions.init(hw.agcRegions);
+        handle->statistics->agcRegions.init(hw.agcRegions);
         const std::vector<double, NothrowAllocator<double>> &weights = agc->getWeights();
-        for (i = 0; i < statistics->agcRegions.numRegions(); i++) {
+        for (i = 0; i < handle->statistics->agcRegions.numRegions(); i++) {
             uint64_t rSum = (stats->agc_stats[i].r_sum << scale) * weights[i];
             uint64_t gSum = (stats->agc_stats[i].g_sum << scale) * weights[i];
             uint64_t bSum = (stats->agc_stats[i].b_sum << scale) * weights[i];
             uint32_t counted = stats->agc_stats[i].counted * weights[i];
             uint32_t notcounted = stats->agc_stats[i].notcounted * weights[i];
-            statistics->agcRegions.set(i, { { rSum, gSum, bSum },
-                            counted,
-                            notcounted });
+            handle->statistics->agcRegions.set(i, { { rSum, gSum, bSum },
+                                                    counted,
+                                                    notcounted });
         }
     }
 
-    statistics->focusRegions.init(hw.focusRegions);
-    for (i = 0; i < statistics->focusRegions.numRegions(); i++)
-        statistics->focusRegions.set(i, { stats->focus_stats[i].contrast_val[1][1] / 1000,
-                          stats->focus_stats[i].contrast_val_num[1][1],
-                          stats->focus_stats[i].contrast_val_num[1][0] });
+    handle->statistics->focusRegions.init(hw.focusRegions);
+    for (i = 0; i < handle->statistics->focusRegions.numRegions(); i++)
+        handle->statistics->focusRegions.set(i, { stats->focus_stats[i].contrast_val[1][1] / 1000,
+                                                  stats->focus_stats[i].contrast_val_num[1][1],
+                                                  stats->focus_stats[i].contrast_val_num[1][0] });
 
-    return statistics;
+    return handle->statistics;
 }
 
 /**
@@ -348,39 +355,43 @@ static RPiController::StatisticsPtr rpi5ProcessStats(RpiIpaHandle_t* handle, con
 
     const pisp_statistics *stats = reinterpret_cast<pisp_statistics *>(mem.data());
 
+    // Reset statistics
+    handle->statistics->rHist.clear();
+    handle->statistics->gHist.clear();
+    handle->statistics->bHist.clear();
+    handle->statistics->yHist.clear();
+    handle->statistics->rowSums.clear();
+
     RPiController::AgcAlgorithm *agc = dynamic_cast<RPiController::AgcAlgorithm *>(
         handle->controller.getAlgorithm("agc"));
     agc->setMeteringMode("matrix");
     agc->setEv(0, 1.0);
 
     unsigned int i;
-    RPiController::StatisticsPtr statistics =
-        new (std::nothrow) RPiController::Statistics(RPiController::Statistics::AgcStatsPos::PostWb,
-                                                     RPiController::Statistics::ColourStatsPos::PreLsc);
 
     /* RGB histograms are not used, so do not populate them. */
-    statistics->yHist = RPiController::Histogram(stats->agc.histogram,
-                             PISP_AGC_STATS_NUM_BINS);
+    handle->statistics->yHist = RPiController::Histogram(stats->agc.histogram,
+                                                         PISP_AGC_STATS_NUM_BINS);
 
-    statistics->awbRegions.init({ PISP_AWB_STATS_SIZE, PISP_AWB_STATS_SIZE });
-    for (i = 0; i < statistics->awbRegions.numRegions(); i++)
-        statistics->awbRegions.set(i, { { stats->awb.zones[i].R_sum,
-                          stats->awb.zones[i].G_sum,
-                          stats->awb.zones[i].B_sum },
-                        stats->awb.zones[i].counted, 0 });
+    handle->statistics->awbRegions.init({ PISP_AWB_STATS_SIZE, PISP_AWB_STATS_SIZE });
+    for (i = 0; i < handle->statistics->awbRegions.numRegions(); i++)
+        handle->statistics->awbRegions.set(i, { { stats->awb.zones[i].R_sum,
+                                                  stats->awb.zones[i].G_sum,
+                                                  stats->awb.zones[i].B_sum },
+                                                  stats->awb.zones[i].counted, 0 });
 
     /* AGC region sums only get collected on floating zones. */
-    statistics->agcRegions.init({ 0, 0 }, PISP_FLOATING_STATS_NUM_ZONES);
-    for (i = 0; i < statistics->agcRegions.numRegions(); i++)
-        statistics->agcRegions.setFloating(i,
+    handle->statistics->agcRegions.init({ 0, 0 }, PISP_FLOATING_STATS_NUM_ZONES);
+    for (i = 0; i < handle->statistics->agcRegions.numRegions(); i++)
+        handle->statistics->agcRegions.setFloating(i,
                            { { 0, 0, 0, stats->agc.floating[i].Y_sum },
                              stats->agc.floating[i].counted, 0 });
 
-    statistics->focusRegions.init({ PISP_CDAF_STATS_SIZE, PISP_CDAF_STATS_SIZE });
-    for (i = 0; i < statistics->focusRegions.numRegions(); i++)
-        statistics->focusRegions.set(i, { stats->cdaf.foms[i] >> 20, 0, 0 });
+    handle->statistics->focusRegions.init({ PISP_CDAF_STATS_SIZE, PISP_CDAF_STATS_SIZE });
+    for (i = 0; i < handle->statistics->focusRegions.numRegions(); i++)
+        handle->statistics->focusRegions.set(i, { stats->cdaf.foms[i] >> 20, 0, 0 });
 
-    return statistics;
+    return handle->statistics;
 }
 
 RpiIpaHandle_t* rpiIpaStart(rpiPlatform_t platform,
@@ -399,21 +410,35 @@ RpiIpaHandle_t* rpiIpaStart(rpiPlatform_t platform,
     }
 
     RpiIpaHandle_t* handle = new (std::nothrow) RpiIpaHandle_t();
+    if (handle == nullptr) {
+        LOG_ERROR("Failed to allocate memory for handle");
+        return nullptr;
+    }
 
     // This library only supports RPi4 and RPi5
-    if ((platform == rpiPlatform_t::RPI4) ||
-        (platform == rpiPlatform_t::RPI5)) {
-        handle->rpiPlatform = platform;
+    handle->rpiPlatform = platform;
+    if (platform == rpiPlatform_t::RPI4) {
+        handle->statistics = new (std::nothrow) RPiController::Statistics(RPiController::Statistics::AgcStatsPos::PreWb,
+                                                                          RPiController::Statistics::ColourStatsPos::PostLsc);
+    } else if (platform == rpiPlatform_t::RPI5) {
+        handle->statistics = new (std::nothrow) RPiController::Statistics(RPiController::Statistics::AgcStatsPos::PostWb,
+                                                                          RPiController::Statistics::ColourStatsPos::PreLsc);
     } else {
         LOG_ERROR("Invalid platform: %d", platform);
         delete handle;
-        return NULL;
+        return nullptr;
+    }
+    if (handle->statistics == nullptr) {
+        LOG_ERROR("Failed to allocate memory for statistics");
+        delete handle;
+        return nullptr;
     }
 
     // Create a camera helper
     handle->camHelper = std::unique_ptr<RPiController::CamHelper>(RPiController::CamHelper::create(sensorName));
     if (handle->camHelper == NULL) {
         LOG_ERROR("Failed to create a camera helper for %s", sensorName);
+        delete handle->statistics;
         delete handle;
         return NULL;
     }
@@ -422,6 +447,7 @@ RpiIpaHandle_t* rpiIpaStart(rpiPlatform_t platform,
     err = handle->controller.read(configPath);
     if (err != EOK) {
         LOG_ERROR("Failed to load tuning data file %s: err = %d", configPath, err);
+        delete handle->statistics;
         delete handle;
         return NULL;
     }
@@ -439,6 +465,8 @@ RpiIpaHandle_t* rpiIpaStart(rpiPlatform_t platform,
     err = fillDeviceStatus(handle, handle->rpiMetadata);
     if (err != EOK) {
         LOG_ERROR("Failed to fill device status: err = %d", err);
+        delete handle->statistics;
+        delete handle;
         return NULL;
     }
 
@@ -450,6 +478,8 @@ RpiIpaHandle_t* rpiIpaStart(rpiPlatform_t platform,
     handle->controller.getAlgorithm("agc"));
     if (agc == NULL) {
         LOG_ERROR("Failed to get agc algorithm");
+        delete handle->statistics;
+        delete handle;
         return NULL;
     }
     agc->setMaxExposureTime(IMX708_MAX_EXPOSURE_TIME);
@@ -460,7 +490,13 @@ RpiIpaHandle_t* rpiIpaStart(rpiPlatform_t platform,
 
 void rpiIpaStop(RpiIpaHandle_t* handle)
 {
-    delete handle;
+    if (handle != nullptr) {
+        RPiController::StatisticsPtr statistics = handle->statistics;
+        // Delete handle first which calls the destructor of algorithms to stop
+        // async threads which access statistics
+        delete handle;
+        delete statistics;
+    }
 }
 
 int rpiIpaProcessData(RpiIpaHandle_t* handle,
@@ -521,14 +557,12 @@ int rpiIpaProcessData(RpiIpaHandle_t* handle,
     // Get the auto exposure algorithm output
     struct AgcStatus agcStatus;
     if (handle->rpiMetadata.get("agc.status", agcStatus) != 0) {
-        delete statistics;
         return EINVAL;
     }
 
     // Get the auto whitebalance algorithm output
     struct AwbStatus awbStatus;
     if (handle->rpiMetadata.get("awb.status", awbStatus) != 0) {
-        delete statistics;
         return EINVAL;
     }
 
@@ -549,7 +583,6 @@ int rpiIpaProcessData(RpiIpaHandle_t* handle,
                             RPI5_WHITE_BALANCE_FRACTIONAL_BITS);
     } else {
         LOG_ERROR("Invalid RPi platform %d", handle->rpiPlatform);
-        delete statistics;
         return EINVAL;
     }
 
@@ -574,8 +607,6 @@ int rpiIpaProcessData(RpiIpaHandle_t* handle,
     // Return auto exposure algorithm outputs
     *exposureTime = exposureLines;
     *iso = gainCode;
-
-    delete statistics;
 
     return EOK;
 }

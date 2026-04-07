@@ -52,6 +52,13 @@ public:
 	/* Return the average histogram bin value between the two quantiles. */
 	double interQuantileMean(double qLo, double qHi) const;
 
+#ifdef __QNX__
+	void clear()
+	{
+		cumulative_.clear();
+	}
+#endif
+
 private:
 #ifdef __QNX__
 	std::vector<uint64_t, NothrowAllocator<uint64_t>> cumulative_;
